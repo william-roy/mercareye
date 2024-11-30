@@ -76,17 +76,6 @@ def save():
         except (IOError, OSError) as e:
             log.error(f'Unable to save searches\n{e}')
             return
-                
-def saveResults():
-    log.debug('Saving search results...')
-
-    with open(results_path, 'w') as f:
-        try:
-            json.dump(results, f)
-            log.info('Search results saved')
-        except (IOError, OSError) as e:
-            log.error(f'Unable to save search results\n{e}')
-            return
 
 def sendNotification(msg):
     # Discord
@@ -101,7 +90,17 @@ def sendNotification(msg):
 
 # Search Jobs ------------------------------------------------------------------
 
-# def addSearchJob(params):
+def addSearchJob(params):
+    
+    if not params['name']:
+        log.warning('Search jobs must have a name')
+        return
+    
+    if params['name'] in searches:
+        log.warning('Search job names must be unique')
+        return
+    
+    searches.append(params)
 
 def deleteSearchJob(name):
     del searches[name]
@@ -116,8 +115,7 @@ async def runSearchJob(search):
 
     # check required fields
     if 'query' not in search:
-        log.warning('No query present, aborting search')
-        return
+        log.warning('No keyword query present')
 
     now = datetime.now()
 
@@ -181,6 +179,25 @@ async def runSearchJob(search):
     else:
         results[search['name']] = newest_item.created
 
+# Search Results ---------------------------------------------------------------
+
+def saveResults():
+    log.debug('Saving search results...')
+
+    with open(results_path, 'w') as f:
+        try:
+            json.dump(results, f)
+            log.info('Search results saved')
+        except (IOError, OSError) as e:
+            log.error(f'Unable to save search results\n{e}')
+            return
+
+def purgeResults(name):
+    if not name:
+        results = []
+    else:
+        del results[name]
+
 # Schedule and start searches
 async def start():
 
@@ -201,7 +218,8 @@ async def start():
         if 'jitter' in s:
             jitter = s['jitter'] 
 
-        scheduler.add_job(runSearchJob, 'interval', seconds=interval, jitter=jitter, args=[s])
+        scheduler.add_job(runSearchJob, 'interval', 
+                          seconds=interval, jitter=jitter, args=[s])
 
     log.debug('Scheduling complete')
     log.debug('Starting scheduler...')
@@ -212,8 +230,3 @@ async def start():
     while True:
         await asyncio.sleep(1000)
 
-def purgeResults(name):
-    if not name:
-        results = []
-    else:
-        del results[name]
