@@ -1,4 +1,4 @@
-FROM python:3.6-slim
+FROM python:3.12-slim
 #Build args
 ARG VCS_REF
 ARG BUILD_DATE
@@ -16,4 +16,4 @@ WORKDIR /app
 RUN mkdir -p /data && pip install -r requirements.txt
 EXPOSE 6233
 #Execution
-CMD python ./app.py ./py.test
+CMD python ./mercareye.py
