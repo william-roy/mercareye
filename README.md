@@ -1,6 +1,7 @@
 # mercareye
 
 ## Docker Compose
+Example Docker Compose setup:
 ```
 mercareye:
     container_name: mercareye

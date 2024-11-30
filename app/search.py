@@ -22,7 +22,7 @@ searches_path = os.path.join(config['OPTIONS']['DataDir'], 'searches.json')
 results_path = os.path.join(config['OPTIONS']['DataDir'], 'results.json')
 
 # user defined list of search job objects
-searches = []   
+searches = []
 
 # dictionary of most recent items from searches 'searchname': datetime.datetime
 results  = {}   
@@ -45,7 +45,7 @@ def load():
                 log.error(f'Unable to read searches file\n{e}')   
     else:
         log.warning('No searches file found')
-
+        save()
     
     if os.path.isfile(results_path):
         log.debug(f'Loading search results from \'{results_path}\'...')
@@ -76,9 +76,7 @@ def save():
         except (IOError, OSError) as e:
             log.error(f'Unable to save searches\n{e}')
             return
-        
-    saveResults()
-        
+                
 def saveResults():
     log.debug('Saving search results...')
 
@@ -91,16 +89,26 @@ def saveResults():
             return
 
 def sendNotification(msg):
-
     # Discord
     if config['NOTIFICATIONS']['DiscordWebhookURL']: 
-        webhook = DiscordWebhook(url=config['NOTIFICATIONS']['DiscordWebhookURL'],username='mercareye',content=msg)
+        webhook = DiscordWebhook(
+            url=config['NOTIFICATIONS']['DiscordWebhookURL'],
+            username='mercareye',
+            content=msg)
         res = webhook.execute()
 
     # Other webhooks, email, etc.
 
+# Search Jobs ------------------------------------------------------------------
+
+# def addSearchJob(params):
+
+def deleteSearchJob(name):
+    del searches[name]
+    del results[name]
+
 # Run a single mercari search and check for new entries
-async def runSearch(search):
+async def runSearchJob(search):
 
     log.debug(f'Running search {search['name']}')       
     if 'last_searched' in search:
@@ -193,7 +201,7 @@ async def start():
         if 'jitter' in s:
             jitter = s['jitter'] 
 
-        scheduler.add_job(runSearch, 'interval', seconds=interval, jitter=jitter, args=[s])
+        scheduler.add_job(runSearchJob, 'interval', seconds=interval, jitter=jitter, args=[s])
 
     log.debug('Scheduling complete')
     log.debug('Starting scheduler...')
@@ -204,9 +212,8 @@ async def start():
     while True:
         await asyncio.sleep(1000)
 
-def purgeResults():
-    results = []
-
-def deleteSearch(name):
-    del searches[name]
-    del results[name]
+def purgeResults(name):
+    if not name:
+        results = []
+    else:
+        del results[name]

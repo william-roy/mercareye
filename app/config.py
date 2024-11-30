@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
 
+load_dotenv()
 config = configparser.ConfigParser()
+data_dir = '/data'
 
 # Search defaults
 config['SEARCH'] = {
@@ -28,16 +30,15 @@ config['NOTIFICATIONS'] = {
 
 # Misc options
 config['OPTIONS'] = {
-    'DataDir':      'data',
+    'DataDir':      data_dir,
     'LogLevel':     logging.getLevelName(logging.INFO)
 }
 
 # Set path to config file
-load_dotenv()
-if os.getenv('DATA_DIR'):
-    config['OPTIONS']['DataDir'] = os.getenv('DATA_DIR')
+config_path = os.path.join(data_dir, 'config.ini')
 
-config_path = os.path.join(config['OPTIONS']['DataDir'], 'config.ini')
+if os.getenv('DATA_DIR'):   # env var override  
+    config_path = os.path.join(os.getenv('DATA_DIR'), 'config.ini')
 
 def load():
     print(f'Loading config from \'{config_path}\'')
@@ -52,6 +53,9 @@ def load():
     else:
         print('No config file found, writing file with defaults')
         save()
+
+    if os.getenv('DATA_DIR'):   # env var override  
+        config['OPTIONS']['DataDir'] = os.getenv('DATA_DIR')
 
     # Setup logging
     logfile = os.path.join(config['OPTIONS']['DataDir'], 'mercareye.log')
