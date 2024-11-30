@@ -1,0 +1,5 @@
+python-dotenv
+mercapi
+discord-webhook
+APScheduler
+Flask
