@@ -5,6 +5,7 @@ Example Docker Compose setup:
 ```
 mercareye:
     container_name: mercareye
+    build: https://github.com/william-roy/mercareye.git
     environment:
         - PUID=1000
         - PGID=1000
