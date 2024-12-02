@@ -9,14 +9,15 @@ import asyncio
 from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+scheduler = AsyncIOScheduler()
 
 from mercapi import Mercapi
 from mercapi.requests import SearchRequestData
 m = Mercapi()
 
-from discord_webhook import DiscordWebhook
-
 from config import config, data_path
+from notify import sendNotification
+
 
 searches_path = os.path.join(data_path, 'searches.json')
 results_path = os.path.join(data_path, 'results.json')
@@ -76,17 +77,6 @@ def save():
         except (IOError, OSError) as e:
             log.error(f'Unable to save searches\n{e}')
             return
-
-def sendNotification(msg):
-    # Discord
-    if config['NOTIFICATIONS']['DiscordWebhookURL']: 
-        webhook = DiscordWebhook(
-            url=config['NOTIFICATIONS']['DiscordWebhookURL'],
-            username='mercareye',
-            content=msg)
-        res = webhook.execute()
-
-    # Other webhooks, email, etc.
 
 def getCreatedTime(item):
     return item.created
@@ -163,12 +153,16 @@ async def runSearchJob(search):
         setNewestTime(search['name'], newest_item.created)
         return
 
-    # log.debug(f'Newest item: {newest_item.created}, Last newest item:{getNewestTime(search['name'])}')
-
     if newest_item.created > getNewestTime(search['name']):
         log.info(f'New item detected in search {search['name']}:\n{newest_item.name}\n')
 
-        sendNotification(f'The search {search['name']} detected a new item listing:\n{newest_item.name}\nhttps://buyee.jp/mercari/item/{newest_item.id_}')
+        sendNotification(
+            search_name=search['name'],
+            item_id=newest_item.id_, 
+            item_name=newest_item.name, 
+            item_price=newest_item.price, 
+            item_thumbnail_url=newest_item.thumbnails[0])
+        
         setNewestTime(search['name'], newest_item.created)
         
 
@@ -202,8 +196,6 @@ def purgeResults(name):
 async def start():
 
     log.debug('Scheduling searches...')
-
-    scheduler = AsyncIOScheduler()
 
     for s in searches:
 
