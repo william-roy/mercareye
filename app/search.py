@@ -16,10 +16,10 @@ m = Mercapi()
 
 from discord_webhook import DiscordWebhook
 
-from config import config
+from config import config, data_path
 
-searches_path = os.path.join(config['OPTIONS']['DataDir'], 'searches.json')
-results_path = os.path.join(config['OPTIONS']['DataDir'], 'results.json')
+searches_path = os.path.join(data_path, 'searches.json')
+results_path = os.path.join(data_path, 'results.json')
 
 # user defined list of search job objects
 searches = []
@@ -88,6 +88,17 @@ def sendNotification(msg):
 
     # Other webhooks, email, etc.
 
+def getCreatedTime(item):
+    return item.created
+
+# Returns most recently created item from a list of items
+def getNewestItem(items):
+
+    log.debug('Sorting items')
+    items.sort(reverse=True,key=getCreatedTime)
+    log.debug(f'Newest item: {items[0].created} - {items[0].name}')
+    return items[0]
+    
 # Search Jobs ------------------------------------------------------------------
 
 def addSearchJob(params):
@@ -139,47 +150,36 @@ async def runSearchJob(search):
         brands=brands,
         sizes=sizes,
         sort_by=SearchRequestData.SortBy.SORT_CREATED_TIME,
-        sort_order=SearchRequestData.SortOrder.ORDER_ASC,
+        sort_order=SearchRequestData.SortOrder.ORDER_DESC,
         status=[SearchRequestData.Status.STATUS_ON_SALE]
     )
     
     log.debug(f'Found {search_res.meta.num_found} results:')
-    
-    if log.getEffectiveLevel() == logging.DEBUG:
-        for i in range(len(search_res.items)):
-            item = search_res.items[i]
-            log.debug(f'{i} - {item.created} - {item.name} - {item.price}')
 
-    # compare most recent result against past result
-    
-    # get newest result (since order of created is not guaranteed)
-    newest_item = None
-    for item in search_res.items:
-        if newest_item == None:
-            newest_item = item
-            continue
-
-        if item.created > newest_item.created:
-            newest_item = item
-            break
-
-    log.debug(f'Newest item is {newest_item.created} - {newest_item.name} - {newest_item.price}')
+    newest_item = getNewestItem(search_res.items)
 
     # check if the newest is newer than what we have stored
-    if search['name'] in results:
-        if newest_item.created > results[search['name']]:
-            log.info(f'New item detected in search {search['name']}:\n{newest_item.name}\n')
+    if search['name'] not in results:
+        setNewestTime(search['name'], newest_item.created)
+        return
 
-            sendNotification(f'The search {search['name']} detected a new item listing:\n{newest_item.name}\nhttps://buyee.jp/mercari/item/{newest_item.id}')
+    # log.debug(f'Newest item: {newest_item.created}, Last newest item:{getNewestTime(search['name'])}')
 
-            results[search['name']] = newest_item.created
-            saveResults()
+    if newest_item.created > getNewestTime(search['name']):
+        log.info(f'New item detected in search {search['name']}:\n{newest_item.name}\n')
 
-        log.info('No new items found')
-    else:
-        results[search['name']] = newest_item.created
+        sendNotification(f'The search {search['name']} detected a new item listing:\n{newest_item.name}\nhttps://buyee.jp/mercari/item/{newest_item.id}')
+        setNewestTime(search['name'], newest_item.created)
+        
 
 # Search Results ---------------------------------------------------------------
+
+def setNewestTime(name, time):
+    results[name] = time.strftime('%Y-%m-%d %H:%M:%S')
+    saveResults()
+
+def getNewestTime(name):
+    return datetime.strptime(results[name], '%Y-%m-%d %H:%M:%S')
 
 def saveResults():
     log.debug('Saving search results...')
