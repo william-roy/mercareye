@@ -168,7 +168,7 @@ async def runSearchJob(search):
     if newest_item.created > getNewestTime(search['name']):
         log.info(f'New item detected in search {search['name']}:\n{newest_item.name}\n')
 
-        sendNotification(f'The search {search['name']} detected a new item listing:\n{newest_item.name}\nhttps://buyee.jp/mercari/item/{newest_item.id}')
+        sendNotification(f'The search {search['name']} detected a new item listing:\n{newest_item.name}\nhttps://buyee.jp/mercari/item/{newest_item.id_}')
         setNewestTime(search['name'], newest_item.created)
         
 
